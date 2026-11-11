@@ -156,7 +156,9 @@ function applyOp(st, op) {
     case 'finish': {
       for (const id of op.ids) {
         const f = findItem(st, id);
-        if (f && f.item.inCart) Object.assign(f.item, { needed: false, inCart: false });
+        if (!f) continue;
+        if (f.item.inCart) Object.assign(f.item, { needed: false, inCart: false, oos: false });
+        else if (f.item.oos) f.item.oos = false; // pas en stock : reste sur la liste
       }
       break;
     }
@@ -497,8 +499,10 @@ function renderMain() {
   const all = st ? st.categories.flatMap((c) => c.items) : [];
   const needed = all.filter((i) => i.needed);
   const inCart = needed.filter((i) => i.inCart);
+  const oos = needed.filter((i) => i.oos && !i.inCart);
+  const handled = inCart.length + oos.length;
   const sub = S.mode === 'courses'
-    ? (needed.length ? `${inCart.length} / ${needed.length} dans le panier` : 'Rien à acheter')
+    ? (needed.length ? `${handled} / ${needed.length} traités` : 'Rien à acheter')
     : (needed.length ? `${needed.length} produit${needed.length > 1 ? 's' : ''} à acheter` : 'La liste est vide');
 
   return `
@@ -515,7 +519,7 @@ function renderMain() {
   </nav>
   <main class="list">
     ${!st ? `<div class="empty"><p>Impossible de charger la liste.</p><button class="btn primary" data-act="retry">Réessayer</button></div>`
-      : S.mode === 'courses' ? renderCourses(st, needed, inCart) : renderMaison(st)}
+      : S.mode === 'courses' ? renderCourses(st, needed, inCart, oos) : renderMaison(st)}
   </main>
   ${S.menu ? renderMenu() : ''}
   ${S.cardSheet ? renderCardSheet(st) : ''}`;
@@ -587,41 +591,46 @@ function renderMaison(st) {
   <button class="btn ghost wide" data-act="addCat">+ Nouvelle catégorie</button>`;
 }
 
-function renderCourses(st, needed, inCart) {
+function renderCourses(st, needed, inCart, oos) {
   if (!needed.length) {
     return `<div class="empty"><div class="big">🧺</div><p>Rien sur la liste.</p><p class="muted">Passe en mode Maison pour cocher ce qu’il faut acheter.</p></div>`;
   }
-  const pct = Math.round((inCart.length / needed.length) * 100);
-  const hasTodo = (c) => c.items.some((i) => i.needed && !i.inCart);
+  const handled = inCart.length + oos.length;
+  const pct = Math.round((handled / needed.length) * 100);
+  const isTodo = (i) => i.needed && !i.inCart && !i.oos;
+  const hasTodo = (c) => c.items.some(isTodo);
   const ordered = [...st.categories.filter(hasTodo), ...st.categories.filter((c) => !hasTodo(c))];
   const cats = ordered.map((c) => {
-    const todo = c.items.filter((i) => i.needed && !i.inCart).sort(byName);
+    const todo = c.items.filter(isTodo).sort(byName);
     const done = c.items.filter((i) => i.needed && i.inCart).sort(byName);
-    if (!todo.length && !done.length) return '';
-    const row = (i, isDone) => `
-      <li class="item shop ${isDone ? 'done' : 'need'}">
-        <button class="tap" data-act="cart" data-id="${i.id}" aria-pressed="${!isDone}">
+    const missing = c.items.filter((i) => i.needed && !i.inCart && i.oos).sort(byName);
+    if (!todo.length && !done.length && !missing.length) return '';
+    const row = (i, state) => `
+      <li class="item shop ${state}">
+        <button class="tap" data-act="cart" data-id="${i.id}" aria-pressed="${state === 'need'}">
           <span class="box" aria-hidden="true"></span>
           <span class="nm">${esc(i.name)}</span>
           ${i.qty ? `<span class="q">${esc(i.qty)}</span>` : ''}
-          ${isDone ? '<span class="tag">au panier</span>' : ''}
+          ${state === 'done' ? '<span class="tag">au panier</span>' : ''}
+          ${state === 'oos' ? '<span class="tag oos-tag">pas en stock</span>' : ''}
         </button>
+        ${state === 'need' ? `<button class="oos-btn" data-act="oos" data-id="${i.id}" aria-label="${esc(i.name)} pas en stock">Pas en stock</button>` : ''}
       </li>`;
     return `
     <section class="cat ${todo.length ? '' : 'all-done'}">
       <header class="cat-h"><div class="cat-title static">
         <span class="emo">${esc(c.emoji || '🛍️')}</span><span class="cat-name">${esc(c.name)}</span>
         <span class="count">${todo.length || '✓'}</span></div></header>
-      <ul class="items">${todo.map((i) => row(i, false)).join('')}${done.map((i) => row(i, true)).join('')}</ul>
+      <ul class="items">${todo.map((i) => row(i, 'need')).join('')}${done.map((i) => row(i, 'done')).join('')}${missing.map((i) => row(i, 'oos')).join('')}</ul>
     </section>`;
   }).join('');
   return `
   <div class="progress" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><div style="width:${pct}%"></div></div>
-  <p class="hint muted">Touche un produit quand il est dans le panier.</p>
+  <p class="hint muted">Touche un produit quand il est dans le panier, ou « Pas en stock » s’il manque.</p>
   ${cats}
   <div class="finish-wrap">
-    <button class="btn primary wide" data-act="finish" ${inCart.length ? '' : 'disabled'}>
-      Terminer les courses${inCart.length ? ` · ${inCart.length} au panier` : ''}
+    <button class="btn primary wide" data-act="finish" ${handled ? '' : 'disabled'}>
+      <span>Terminer les courses</span>${handled ? `<small>${[inCart.length ? `${inCart.length} au panier` : '', oos.length ? `${oos.length} pas en stock` : ''].filter(Boolean).join(' · ')}</small>` : ''}
     </button>
   </div>`;
 }
@@ -746,11 +755,15 @@ const H = {
   need(b) {
     const f = findItem(view(), b.dataset.id); if (!f) return;
     const needed = !f.item.needed;
-    act({ t: 'patchItem', id: f.item.id, patch: needed ? { needed: true, inCart: false, by: S.user, at: Date.now() } : { needed: false, inCart: false } });
+    act({ t: 'patchItem', id: f.item.id, patch: needed ? { needed: true, inCart: false, oos: false, by: S.user, at: Date.now() } : { needed: false, inCart: false, oos: false } });
+  },
+  oos(b) {
+    const f = findItem(view(), b.dataset.id); if (!f) return;
+    act({ t: 'patchItem', id: f.item.id, patch: { oos: true, inCart: false } });
   },
   cart(b) {
     const f = findItem(view(), b.dataset.id); if (!f) return;
-    act({ t: 'patchItem', id: f.item.id, patch: { inCart: !f.item.inCart } });
+    act({ t: 'patchItem', id: f.item.id, patch: f.item.oos ? { oos: false, inCart: false } : { inCart: !f.item.inCart } });
     if (navigator.vibrate) navigator.vibrate(15);
   },
   add(f) {
@@ -824,12 +837,17 @@ const H = {
     const st = view();
     const all = st.categories.flatMap((c) => c.items).filter((i) => i.needed);
     const done = all.filter((i) => i.inCart);
-    const left = all.length - done.length;
-    const msg = `Retirer de la liste les ${done.length} produit${done.length > 1 ? 's' : ''} mis au panier ?`
-      + (left ? `\n${left} produit${left > 1 ? 's' : ''} non trouvé${left > 1 ? 's' : ''} resteront sur la liste.` : '');
-    if (!confirm(msg)) return;
+    const missing = all.filter((i) => !i.inCart && i.oos);
+    const left = all.length - done.length - missing.length;
+    const pr = (n) => `${n} produit${n > 1 ? 's' : ''}`;
+    const rest = (n) => (n > 1 ? 'restent' : 'reste');
+    const lines = ['Terminer les courses ?'];
+    if (done.length) lines.push(`• ${pr(done.length)} au panier : retiré${done.length > 1 ? 's' : ''} de la liste`);
+    if (missing.length) lines.push(`• ${pr(missing.length)} pas en stock : ${rest(missing.length)} sur la liste`);
+    if (left) lines.push(`• ${pr(left)} non traité${left > 1 ? 's' : ''} : ${rest(left)} sur la liste`);
+    if (!confirm(lines.join('\n'))) return;
     S.cardSheet = 'finish';
-    act({ t: 'finish', ids: done.map((i) => i.id) });
+    act({ t: 'finish', ids: [...done, ...missing].map((i) => i.id) });
   },
   uncheckAll() {
     const st = view();
@@ -837,7 +855,7 @@ const H = {
     S.menu = false;
     if (!ids.length) { render(); return; }
     if (!confirm(`Décocher les ${ids.length} produits de la liste ?`)) { render(); return; }
-    for (const id of ids) S.pending.push({ t: 'patchItem', id, patch: { needed: false, inCart: false } });
+    for (const id of ids) S.pending.push({ t: 'patchItem', id, patch: { needed: false, inCart: false, oos: false } });
     saveCache(); render(); scheduleFlush();
   },
   showCard() { S.menu = false; S.cardSheet = 'menu'; render(); },

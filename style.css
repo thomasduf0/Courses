@@ -274,3 +274,17 @@ body[data-mode="maison"] .toast { bottom: calc(20px + env(safe-area-inset-bottom
 .tr-age { font-size: 14px; opacity: .9; }
 .tr-age.old { font-weight: 700; opacity: 1; }
 .tr-age.old::before { content: "⚠︎ "; }
+
+/* ---------- pas en stock ---------- */
+.oos-btn {
+  flex: none; font-size: 13px; font-weight: 650; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 999px; padding: 7px 11px; margin-right: 2px;
+}
+.oos-btn:active { background: var(--soft); }
+.item.oos { background: color-mix(in srgb, var(--terra) 7%, transparent); }
+.item.oos .box { border-color: var(--terra); border-style: dashed; }
+.item.oos .nm { color: var(--muted); font-weight: 400; }
+.item.oos .q { background: transparent; color: var(--muted); }
+.oos-tag { color: var(--terra); }
+.finish-wrap .btn { flex-direction: column; gap: 0; line-height: 1.2; padding: 8px 18px; }
+.finish-wrap .btn small { font-size: 13px; font-weight: 550; opacity: .85; }
