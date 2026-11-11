@@ -261,3 +261,16 @@ body[data-mode="courses"] .modes button.on { background: var(--green); color: #f
 }
 .toast button { color: var(--green-soft); font-weight: 700; white-space: nowrap; }
 body[data-mode="maison"] .toast { bottom: calc(20px + env(safe-area-inset-bottom)); }
+
+/* ---------- solde Ticket Restaurant ---------- */
+.sheet-title { margin: 0 0 4px; font-size: 20px; font-weight: 700; text-align: center; }
+.tr-card {
+  display: grid; gap: 4px; padding: 18px; margin-bottom: 6px; border-radius: 18px;
+  background: linear-gradient(135deg, #c4553b, #e0864e); color: #fff;
+}
+.tr-label { font-size: 14px; font-weight: 600; opacity: .9; }
+.tr-amount { font-size: 38px; font-weight: 750; letter-spacing: -.02em; line-height: 1.1; }
+.tr-amount.empty { opacity: .6; }
+.tr-age { font-size: 14px; opacity: .9; }
+.tr-age.old { font-weight: 700; opacity: 1; }
+.tr-age.old::before { content: "⚠︎ "; }

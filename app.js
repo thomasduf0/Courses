@@ -149,6 +149,10 @@ function applyOp(st, op) {
       if (i >= 0 && j >= 0 && j < st.categories.length) [st.categories[i], st.categories[j]] = [st.categories[j], st.categories[i]];
       break;
     }
+    case 'setCard': {
+      st.card = { balance: op.balance, at: op.at, by: op.user };
+      break;
+    }
     case 'finish': {
       for (const id of op.ids) {
         const f = findItem(st, id);
@@ -172,7 +176,7 @@ const S = {
   collapsed: new Set(lsGet(LS.collapsed, [])),
   editing: new Set(),
   drafts: {},
-  menu: false, toast: null, toastTimer: null,
+  menu: false, cardSheet: null, toast: null, toastTimer: null,
   loginUser: null, error: '', busy: false,
   pollTimer: null, wake: null,
 };
@@ -513,7 +517,8 @@ function renderMain() {
     ${!st ? `<div class="empty"><p>Impossible de charger la liste.</p><button class="btn primary" data-act="retry">Réessayer</button></div>`
       : S.mode === 'courses' ? renderCourses(st, needed, inCart) : renderMaison(st)}
   </main>
-  ${S.menu ? renderMenu() : ''}`;
+  ${S.menu ? renderMenu() : ''}
+  ${S.cardSheet ? renderCardSheet(st) : ''}`;
 }
 
 function whoDot(item) {
@@ -627,11 +632,41 @@ function renderMenu() {
   <div class="sheet-bg" data-act="closeMenu"></div>
   <div class="sheet" role="dialog" aria-label="Menu">
     <p class="sheet-who"><span class="avatar" style="--c:${me.color}">${me.name[0]}</span> Connecté en tant que <b>${me.name}</b></p>
+    <button class="btn ghost wide" data-act="showCard">💳 Solde Ticket Restaurant</button>
     <button class="btn ghost wide" data-act="refresh">↻ Actualiser la liste</button>
     <button class="btn ghost wide" data-act="uncheckAll">Tout décocher</button>
     <button class="btn ghost wide" data-act="replaceToken">Remplacer le jeton GitHub</button>
     <button class="btn ghost wide danger" data-act="logout">Se déconnecter</button>
     <button class="btn wide" data-act="closeMenu">Fermer</button>
+  </div>`;
+}
+
+const euros = (n) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n);
+function daysSince(ts) {
+  const d0 = new Date(ts); d0.setHours(0, 0, 0, 0);
+  const d1 = new Date(); d1.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((d1 - d0) / 86400000));
+}
+function ageLabel(ts) {
+  const d = daysSince(ts);
+  return d === 0 ? 'Actualisé aujourd’hui' : d === 1 ? 'Actualisé hier' : `Actualisé il y a ${d} jours`;
+}
+function renderCardSheet(st) {
+  const card = st && st.card;
+  const old = card && daysSince(card.at) >= 7;
+  return `
+  <div class="sheet-bg" data-act="closeCard"></div>
+  <div class="sheet card-sheet" role="dialog" aria-label="Solde Ticket Restaurant">
+    ${S.cardSheet === 'finish' ? '<p class="sheet-title">Courses terminées 👏</p>' : ''}
+    <div class="tr-card">
+      <span class="tr-label">💳 Carte Ticket Restaurant</span>
+      ${card ? `
+        <span class="tr-amount">${euros(card.balance)}</span>
+        <span class="tr-age ${old ? 'old' : ''}">${ageLabel(card.at)}${card.by && USERS[card.by] ? ` par ${USERS[card.by].name}` : ''}</span>`
+      : `<span class="tr-amount empty">— €</span><span class="tr-age">Aucun solde enregistré</span>`}
+    </div>
+    <button class="btn primary wide" data-act="setCard">${card ? 'Mettre à jour le solde' : 'Saisir mon solde'}</button>
+    <button class="btn wide" data-act="closeCard">Fermer</button>
   </div>`;
 }
 
@@ -793,8 +828,8 @@ const H = {
     const msg = `Retirer de la liste les ${done.length} produit${done.length > 1 ? 's' : ''} mis au panier ?`
       + (left ? `\n${left} produit${left > 1 ? 's' : ''} non trouvé${left > 1 ? 's' : ''} resteront sur la liste.` : '');
     if (!confirm(msg)) return;
+    S.cardSheet = 'finish';
     act({ t: 'finish', ids: done.map((i) => i.id) });
-    showToast('Courses terminées 👏');
   },
   uncheckAll() {
     const st = view();
@@ -804,6 +839,16 @@ const H = {
     if (!confirm(`Décocher les ${ids.length} produits de la liste ?`)) { render(); return; }
     for (const id of ids) S.pending.push({ t: 'patchItem', id, patch: { needed: false, inCart: false } });
     saveCache(); render(); scheduleFlush();
+  },
+  showCard() { S.menu = false; S.cardSheet = 'menu'; render(); },
+  closeCard() { S.cardSheet = null; render(); },
+  setCard() {
+    const card = view().card;
+    const raw = prompt('Solde actuel de la carte Ticket Restaurant (en €)', card ? String(card.balance).replace('.', ',') : '');
+    if (raw == null) return;
+    const n = Number(raw.replace(/[€\s]/g, '').replace(',', '.'));
+    if (!raw.trim() || !Number.isFinite(n) || n < 0) { showToast('Montant non reconnu'); return; }
+    act({ t: 'setCard', user: S.user, balance: Math.round(n * 100) / 100, at: Date.now() });
   },
   menu() { S.menu = true; render(); },
   closeMenu() { S.menu = false; render(); },
