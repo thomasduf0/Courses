@@ -1,0 +1,17 @@
+{
+  "v": 1,
+  "iter": 310000,
+  "note": "Jeton GitHub chiffré avec le mot de passe de chacun. Ne pas modifier à la main.",
+  "users": {
+    "thomas": {
+      "salt": "AMo/Gt8a7rfPLofZNPV4fw==",
+      "iv": "p1lo6GIKGR/3yV4T",
+      "ct": "SdISJdKb8g04I0fH61K4AkVqAkhA0Y1UHfGxmMLnfK4y0Yd6xv+S4/uctzNeHIaobfw4yq03HlNF0eViZ/ecQHuTzI0ArkRDCX1AE3Yv/1DOuuG1N4wgDtt7xq9/uHqYuMZM1dboRNG2DAUGo5b0dfL5YoyC0G1p06l0QNK/meCv50gtUm/Xk9YMwDcJUjK54akB1zk/RwuUnRCS2rBPiTCDoEDPW/lvmZVV4vX05SV5fQ=="
+    },
+    "mickael": {
+      "salt": "2sFm4gax0IZHmyKhEVBHhQ==",
+      "iv": "nf7PXG5OH/GPfJIs",
+      "ct": "Im3iPInIjRpsfZsrUB6jI6aTtmd64EnXWkl03wqu7Xc5LJnokX1M+gjktaIPamB9JTA0Eh2Zlee90/MYFvc+oC86vXIvJ119Ldf1wEq66J7Gy3mrA20EJdHDPi2hJSfKcEuqoy5kHwZf9CcJsImglud2NjQplXtrD02YVHTVtlg+37QHEHs33LVMwkKtvPMNam0XbK1/h4xPJFvigNAJwnPD6hUuq1wkaz609pjIoR90Iw=="
+    }
+  }
+}
