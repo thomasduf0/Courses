@@ -692,7 +692,11 @@ const H = {
         S.screen = 'login'; S.token = null; showToast('Liste créée ! Connecte-toi.');
       }
     } catch (e) {
-      S.busy = false; S.error = e.message; render();
+      S.busy = false;
+      S.error = e.status === 403
+        ? 'Ce jeton peut lire le dépôt mais pas y écrire. Dans GitHub, modifie le jeton : dépôt « Courses » sélectionné et permission « Contents : Read and write ».'
+        : e.message;
+      render();
     }
   },
   cancelReplace() { S.screen = 'main'; S.error = ''; render(); },
