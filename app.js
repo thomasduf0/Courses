@@ -25,9 +25,10 @@ const LS = {
   filter: 'courses.filter',
 };
 const DEFAULT_CATEGORIES = [
-  ['Fruits', '🍎'], ['Légumes', '🥕'], ['Viande & poisson', '🥩'], ['Frais', '🧀'],
-  ['Boulangerie', '🥖'], ['Vrac', '🌾'], ['Épicerie', '🥫'], ['Surgelés', '🧊'],
-  ['Boissons', '🧃'], ['Hygiène & maison', '🧴'],
+  ['Vrac', '🌾'], ['Fruits et légumes frais', '🥕'], ['Condiments', '🫙'], ['Sec', '🍝'],
+  ['Conserves', '🥫'], ['Laiterie', '🥛'], ['Crémerie / Fromages', '🧀'], ['Rayon frais', '🐟'],
+  ['Rayon surgelé', '🧊'], ['Boucherie / Boulangerie', '🥩'], ['Rayon petit déjeuner', '☕'],
+  ['Rayon douceurs', '🍫'], ['Hygiène / Maison', '🧴'],
 ];
 
 /* ---------- utilitaires ---------- */
