@@ -16,7 +16,7 @@ const USERS = {
   mickael: { name: 'Mickaël', color: '#c4553b' },
 };
 const ITER = 310000;
-const POLL_MS = 8000;
+const POLL_MS = 4000;
 const LS = {
   session: 'courses.session',
   cache: 'courses.cache',
@@ -264,10 +264,12 @@ async function poll() {
     if (d.notModified || d.sha === S.sha) { setSync('ok'); return; }
     if (S.remote && (d.state.rev || 0) < (S.remote.rev || 0)) return; // copie en retard côté GitHub
     if (S.flushing || S.pending.length) return; // une modification locale est partie entre-temps
+    const from = d.state.updatedBy && d.state.updatedBy !== S.user ? USERS[d.state.updatedBy] : null;
     S.remote = d.state; S.sha = d.sha; S.etag = d.etag;
     saveCache();
     setSync('ok');
-    render();
+    if (from && !S.toast && !S.menu && !S.cardSheet) showToast(`↻ ${from.name} a modifié la liste`);
+    else render();
   } catch (e) {
     if (!handleAuthError(e)) setSync('error', e);
   }
@@ -899,6 +901,8 @@ root.addEventListener('change', (e) => {
 root.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.dataset && e.target.dataset.act === 'qty') e.target.blur();
 });
+window.addEventListener('focus', () => poll());
+window.addEventListener('pageshow', () => poll());
 document.addEventListener('visibilitychange', () => {
   updateWakeLock();
   if (!document.hidden) poll();
