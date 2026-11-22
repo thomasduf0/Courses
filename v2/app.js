@@ -421,6 +421,27 @@ sb.auth.onAuthStateChange((event) => {
 async function seed(st) {
   await write(diff({ categories: [] }, { categories: st.categories, card: st.card }));
 }
+// Récupération sans mot de passe : l'ancienne appli (même adresse) a gardé sa clé sur cet appareil
+function deviceOldSession() {
+  const sess = lsGet('courses.session', null);
+  const cache = lsGet('courses.cache', null);
+  return { listKey: sess && sess.listKey, cached: cache && cache.remote && cache.remote.categories ? cache.remote : null };
+}
+async function importFromDevice() {
+  const { listKey, cached } = deviceOldSession();
+  let st = null;
+  if (listKey) {
+    try { st = JSON.parse(await unseal(await importListKey(listKey), await oldFile(OLD.data))); } catch (e) { console.warn('Lecture de la liste en ligne impossible', e); }
+  }
+  if (!st && cached) {
+    st = clone(cached);
+    // rejoue les modifications qui n'avaient pas encore été envoyées
+    for (const op of (lsGet('courses.cache', {}).pending || [])) applyOp(st, op);
+  }
+  if (!st) throw new Error('Aucune ancienne liste trouvée sur cet appareil.');
+  await seed(st);
+  return st.categories.reduce((n, c) => n + c.items.length, 0);
+}
 async function importOld(password) {
   const cfg = await oldFile(OLD.config);
   const blob = cfg && cfg.users && cfg.users[S.user];
@@ -549,13 +570,17 @@ function renderNotMember() {
 }
 
 function renderImport() {
+  const old = deviceOldSession();
+  const auto = old.listKey || old.cached;
   return authShell('Bienvenue dans la nouvelle version', `
-      <p class="muted">La liste est vide pour l’instant. Récupère l’ancienne liste avec ton <b>ancien</b> mot de passe de l’appli Courses, ou repars de zéro.</p>
+      <p class="muted">La liste est vide pour l’instant. Récupère l’ancienne liste avec toutes ses catégories et ses produits.</p>
+      ${auto ? `<button class="btn primary" data-act="importDevice" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Import en cours…' : 'Récupérer l’ancienne liste (sans mot de passe)'}</button>
+      <p class="muted">Ou avec ton ancien mot de passe :</p>` : `<p class="muted">L’ancienne appli n’est pas ouverte sur cet appareil : utilise ton <b>ancien</b> mot de passe, ou ouvre cette page sur le téléphone où l’ancienne appli est connectée.</p>`}
       <form data-act="importOld">
         <label>Ancien mot de passe de ${USERS[S.user].name}
           <input name="pw" type="password" data-fk="i:pw" value="${esc(draft('i:pw'))}" required autocomplete="off" autocapitalize="off">
         </label>
-        <button class="btn primary" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Import en cours…' : 'Récupérer l’ancienne liste'}</button>
+        <button class="btn ${auto ? 'ghost' : 'primary'}" ${S.busy ? 'disabled' : ''}>Récupérer avec l’ancien mot de passe</button>
       </form>
       <button class="btn ghost" data-act="seedDefault" ${S.busy ? 'disabled' : ''}>Partir d’une liste vide</button>`);
 }
@@ -813,6 +838,13 @@ const H = {
   async importOld(f) {
     await authTask(async () => {
       const n = await importOld(f.pw.value);
+      await start();
+      showToast(`Ancienne liste récupérée : ${n} produit${n > 1 ? 's' : ''}`);
+    });
+  },
+  async importDevice() {
+    await authTask(async () => {
+      const n = await importFromDevice();
       await start();
       showToast(`Ancienne liste récupérée : ${n} produit${n > 1 ? 's' : ''}`);
     });

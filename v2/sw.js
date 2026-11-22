@@ -1,7 +1,7 @@
 // Garde l'appli disponible même avec peu de réseau au magasin.
 // Fichiers du site et bibliothèque Supabase : réseau d'abord, copie locale si pas de réseau.
 // Les échanges avec la base (supabase.co) ne passent jamais par ce cache.
-const CACHE = 'courses-v2-1';
+const CACHE = 'courses-v2-2';
 const LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
 const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest', 'icon.svg', 'icon-180.png', 'icon-512.png', LIB];
 
