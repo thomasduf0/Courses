@@ -208,6 +208,7 @@ const S = {
   collapsed: new Set(lsGet(LS.collapsed, [])),
   editing: new Set(),
   drafts: {},
+  search: '',
   menu: false, cardSheet: null, toast: null, toastTimer: null,
   loginUser: null, signup: false, info: '', error: '', busy: false,
   pollTimer: null, wake: null,
@@ -634,11 +635,35 @@ function whoDot(item) {
 
 function renderMaison(st) {
   const onlyNeeded = S.filter === 'liste';
+  return `
+  <div class="toolbar">
+    <div class="search" role="search">
+      <svg class="search-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+      <input type="search" data-act="search" data-fk="search" value="${esc(S.search)}" placeholder="Rechercher un produit…" aria-label="Rechercher un produit" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search">
+      <button type="button" class="search-x" data-act="clearSearch" aria-label="Effacer la recherche">✕</button>
+    </div>
+    <div class="seg">
+      <button data-act="filter" data-v="tout" class="${!onlyNeeded ? 'on' : ''}">Tous les produits</button>
+      <button data-act="filter" data-v="liste" class="${onlyNeeded ? 'on' : ''}">Seulement cochés</button>
+    </div>
+  </div>
+  <div id="cats">${renderMaisonCats(st)}</div>`;
+}
+
+// Recherche : ignore les accents et la casse, cherche dans toutes les catégories
+// (même repliées, même avec le filtre « Seulement cochés »).
+function renderMaisonCats(st) {
+  const onlyNeeded = S.filter === 'liste';
+  const raw = S.search.trim().replace(/\s+/g, ' ');
+  const q = norm(raw);
+  const searching = !!q;
+  const hits = (i) => norm(i.name).includes(q);
   const cats = st.categories.map((c) => {
-    const items = [...c.items].sort(byName).filter((i) => !onlyNeeded || i.needed);
+    const items = [...c.items].sort(byName).filter((i) => (searching ? hits(i) : !onlyNeeded || i.needed));
+    if (searching && !items.length) return '';
     const n = c.items.filter((i) => i.needed).length;
     const editing = S.editing.has(c.id);
-    const collapsed = S.collapsed.has(c.id) && !editing;
+    const collapsed = S.collapsed.has(c.id) && !editing && !searching;
     const fk = 'add:' + c.id;
     return `
     <section class="cat ${collapsed ? 'collapsed' : ''} ${editing ? 'editing' : ''}">
@@ -674,23 +699,31 @@ function renderMaison(st) {
         }).join('')}
         ${!items.length ? `<li class="none">${onlyNeeded ? 'Rien de coché ici' : 'Aucun produit pour l’instant'}</li>` : ''}
       </ul>
-      <form class="add" data-act="add" data-cat="${c.id}">
+      ${searching ? '' : `<form class="add" data-act="add" data-cat="${c.id}">
         <input name="name" data-fk="${fk}" value="${esc(draft(fk))}" placeholder="Ajouter un produit…" autocomplete="off" enterkeyhint="done">
         <input name="qty" class="qty" data-fk="${fk}:q" value="${esc(draft(fk + ':q'))}" placeholder="qté" autocomplete="off" enterkeyhint="done">
         <button class="add-btn" aria-label="Ajouter">+</button>
-      </form>`}
+      </form>`}`}
     </section>`;
   }).join('');
 
-  return `
-  <div class="toolbar">
-    <div class="seg">
-      <button data-act="filter" data-v="tout" class="${!onlyNeeded ? 'on' : ''}">Tous les produits</button>
-      <button data-act="filter" data-v="liste" class="${onlyNeeded ? 'on' : ''}">Seulement cochés</button>
+  if (!searching) return `${cats}<button class="btn ghost wide" data-act="addCat">+ Nouvelle catégorie</button>`;
+
+  // Pas de produit portant exactement ce nom : on propose de le créer.
+  const all = st.categories.flatMap((c) => c.items.map((i) => ({ i, c })));
+  const exact = all.some(({ i }) => norm(i.name) === q);
+  const guess = (all.find(({ i }) => hits(i)) || {}).c || st.categories[0];
+  const addBox = exact || !st.categories.length ? '' : `
+  <form class="search-add" data-act="searchAdd">
+    <p>${cats ? 'Pas exactement ça ?' : `Aucun produit « ${esc(raw)} »`}</p>
+    <div class="row">
+      <select name="cat" aria-label="Catégorie">
+        ${st.categories.map((c) => `<option value="${c.id}" ${c === guess ? 'selected' : ''}>${esc(c.emoji || '🛍️')} ${esc(c.name)}</option>`).join('')}
+      </select>
+      <button class="btn primary">Ajouter « ${esc(raw)} »</button>
     </div>
-  </div>
-  ${cats}
-  <button class="btn ghost wide" data-act="addCat">+ Nouvelle catégorie</button>`;
+  </form>`;
+  return cats + addBox;
 }
 
 function renderCourses(st, needed, inCart, oos) {
@@ -856,6 +889,20 @@ const H = {
   logoutNow() { logout(); },
   mode(b) { S.mode = b.dataset.v; lsSet(LS.mode, S.mode); render(); window.scrollTo(0, 0); updateWakeLock(); },
   filter(b) { S.filter = b.dataset.v; lsSet(LS.filter, S.filter); render(); },
+  clearSearch() {
+    S.search = '';
+    render();
+    const input = root.querySelector('[data-fk="search"]');
+    if (input) input.focus();
+  },
+  searchAdd(f) {
+    const name = S.search.trim().replace(/\s+/g, ' ');
+    const cat = view().categories.find((c) => c.id === f.cat.value);
+    if (!name || !cat) return;
+    S.search = '';
+    act({ t: 'addItem', cat: cat.id, item: { id: uid(), name: name[0].toUpperCase() + name.slice(1), qty: '', needed: true, inCart: false, by: S.user, at: Date.now() } });
+    showToast(`« ${name[0].toUpperCase() + name.slice(1)} » ajouté dans ${cat.name}`);
+  },
   collapse(b) {
     const id = b.dataset.id;
     S.collapsed.has(id) ? S.collapsed.delete(id) : S.collapsed.add(id);
@@ -998,6 +1045,13 @@ root.addEventListener('submit', (e) => {
   if (fn) fn(e.target, e);
 });
 root.addEventListener('input', (e) => {
+  if (e.target.dataset && e.target.dataset.act === 'search') {
+    S.search = e.target.value;
+    const box = document.getElementById('cats');
+    const st = view();
+    if (box && st) box.innerHTML = renderMaisonCats(st);
+    return;
+  }
   const fk = e.target.dataset && e.target.dataset.fk;
   if (fk) S.drafts[fk] = e.target.value;
 });
@@ -1006,6 +1060,10 @@ root.addEventListener('change', (e) => {
 });
 root.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.dataset && e.target.dataset.act === 'qty') e.target.blur();
+  if (e.target.dataset && e.target.dataset.act === 'search') {
+    if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
+    if (e.key === 'Escape') { e.preventDefault(); H.clearSearch(); }
+  }
 });
 window.addEventListener('focus', () => poll());
 window.addEventListener('pageshow', () => poll());

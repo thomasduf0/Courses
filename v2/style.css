@@ -147,6 +147,36 @@ body[data-mode="courses"] .modes button.on { background: var(--green); color: #f
 }
 .seg button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 
+/* ---------- recherche ---------- */
+.search { position: relative; margin-bottom: 10px; }
+.search input {
+  padding: 11px 42px 11px 42px; border-radius: 14px; background: var(--card);
+  box-shadow: var(--shadow); -webkit-appearance: none; appearance: none;
+}
+.search input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+.search-ic {
+  position: absolute; left: 14px; top: 50%; width: 19px; height: 19px; transform: translateY(-50%);
+  fill: none; stroke: var(--muted); stroke-width: 2.2; stroke-linecap: round; pointer-events: none;
+}
+.search-x {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  width: 34px; height: 34px; border-radius: 10px; color: var(--muted); font-size: 15px;
+}
+.search-x:active { background: var(--soft); }
+.search input:placeholder-shown ~ .search-x { display: none; }
+select {
+  font: inherit; font-size: 16px; color: inherit; background: var(--card);
+  border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-width: 0;
+}
+.search-add {
+  background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 12px; margin-bottom: 12px;
+}
+.search-add p { margin: 0 0 10px; color: var(--muted); font-size: 14px; }
+.search-add .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.search-add select { flex: 1 1 160px; }
+.search-add .btn { flex: 1 1 auto; min-height: 44px; overflow-wrap: anywhere; }
+
 /* ---------- catégories ---------- */
 .cat {
   background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);

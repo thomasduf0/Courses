@@ -7,7 +7,7 @@ Liste de courses partagée entre Thomas et Mickaël, utilisable sur téléphone.
 ## Utilisation
 
 - **Connexion** : choisir Thomas ou Mickaël, puis son mot de passe. L'appareil reste connecté ensuite.
-- **🏠 Maison** : les produits sont rangés par catégorie. On coche ce qu'il faut acheter, on ajoute un produit en bas de chaque catégorie (avec une quantité si besoin). Un produit décoché reste dans le catalogue pour la prochaine fois. Le bouton **Modifier** d'une catégorie permet de renommer / supprimer des produits, et de renommer, déplacer ou supprimer la catégorie. La petite pastille T ou M indique qui a coché le produit.
+- **🏠 Maison** : les produits sont rangés par catégorie. On coche ce qu'il faut acheter, on ajoute un produit en bas de chaque catégorie (avec une quantité si besoin). Un produit décoché reste dans le catalogue pour la prochaine fois. Le bouton **Modifier** d'une catégorie permet de renommer / supprimer des produits, et de renommer, déplacer ou supprimer la catégorie. La petite pastille T ou M indique qui a coché le produit. La **barre de recherche** en haut retrouve un produit dans toutes les catégories (sans tenir compte des accents) ; s'il n'existe pas encore, elle propose de l'ajouter directement dans la catégorie choisie.
 - **🛒 Aux courses** : seuls les produits cochés apparaissent. On les touche quand ils sont dans le panier (ils passent en barré, en bas du rayon). **Terminer les courses** retire de la liste ce qui a été pris ; ce qui n'a pas été trouvé reste coché. L'écran reste allumé dans ce mode.
 - Les modifications de l'un apparaissent chez l'autre en quelques secondes. Sans réseau, les changements sont gardés sur le téléphone et envoyés dès que la connexion revient.
 
